@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #090a0f;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* RGB Gaming Keyboard Underglow & Keycap Animations */
+@keyframes rgb-chassis-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes rgb-key-wave {
+  0%, 100% {
+    border-color: rgba(6, 182, 212, 0.55);
+    box-shadow: 0 4px 0 #070b14, 0 0 12px rgba(6, 182, 212, 0.25);
+  }
+  25% {
+    border-color: rgba(16, 185, 129, 0.55);
+    box-shadow: 0 4px 0 #070b14, 0 0 12px rgba(16, 185, 129, 0.25);
+  }
+  50% {
+    border-color: rgba(168, 85, 247, 0.55);
+    box-shadow: 0 4px 0 #070b14, 0 0 12px rgba(168, 85, 247, 0.25);
+  }
+  75% {
+    border-color: rgba(244, 63, 94, 0.55);
+    box-shadow: 0 4px 0 #070b14, 0 0 12px rgba(244, 63, 94, 0.25);
+  }
+}
+
+@keyframes rgb-breathe {
+  0%, 100% {
+    border-color: rgba(6, 182, 212, 0.25);
+    box-shadow: 0 4px 0 #070b14, 0 0 6px rgba(6, 182, 212, 0.12);
+  }
+  50% {
+    border-color: rgba(52, 211, 153, 0.7);
+    box-shadow: 0 4px 0 #070b14, 0 0 16px rgba(52, 211, 153, 0.35);
+  }
+}
+
+@keyframes target-beacon {
+  0%, 100% {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 5px 0 #065f46, 0 0 22px rgba(52, 211, 153, 0.85), inset 0 0 10px rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 6px 0 #065f46, 0 0 32px rgba(6, 182, 212, 0.95), inset 0 0 14px rgba(255, 255, 255, 0.55);
+  }
+}
+
+.animate-rgb-chassis {
+  background-size: 300% 300%;
+  animation: rgb-chassis-flow 6s ease infinite;
+}
+
+.animate-rgb-wave {
+  animation: rgb-key-wave 5s linear infinite;
+}
+
+.animate-rgb-breathe {
+  animation: rgb-breathe 3s ease-in-out infinite;
+}
+
+.animate-target-beacon {
+  animation: target-beacon 1.1s ease-in-out infinite;
+}
