@@ -27,31 +27,61 @@ export default function App() {
   const [activeLessonId, setActiveLessonId] = useState(() => storageService.getActiveLessonId());
   const [activeTab, setActiveTab] = useState('key');
   const [wordFileIdx, setWordFileIdx] = useState(0);
+  const [sentenceFileIdx, setSentenceFileIdx] = useState(0);
   const [paragraphFileIdx, setParagraphFileIdx] = useState(0);
   const [completedDrills, setCompletedDrills] = useState(() => storageService.getCompletedDrills());
 
   const currentLesson = useMemo(() => getLessonById(activeLessonId), [activeLessonId]);
 
   const currentDrillText = useMemo(() => {
-    let raw = '';
+    if (!currentLesson) return '';
+
+    const normalizeLines = (raw) =>
+      raw
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .map((line) => line.replace(/\s+$/g, '')) // strip trailing spaces before Enter
+        .filter((line) => line.trim().length > 0) // skip blank/extra Enter lines
+        .join('\n');
+
     if (activeTab === 'key') {
-      raw = currentLesson.keyDrill || '';
-    } else if (activeTab === 'word') {
-      raw = currentLesson.wordDrills[wordFileIdx]?.text || '';
-    } else if (activeTab === 'paragraph') {
-      raw = currentLesson.paragraphDrills[paragraphFileIdx]?.text || '';
+      return (currentLesson.keyDrill || '').replace(/\r\n/g, '\n');
     }
+    if (activeTab === 'word') {
+      const raw =
+        currentLesson.wordDrills?.[wordFileIdx]?.text ||
+        currentLesson.wordDrills?.[0]?.text ||
+        '';
+      return normalizeLines(raw);
+    }
+    if (activeTab === 'sentence') {
+      const rawSentence =
+        currentLesson.sentenceDrills?.[sentenceFileIdx]?.text ||
+        currentLesson.sentenceDrills?.[0]?.text;
+      if (rawSentence) {
+        return normalizeLines(rawSentence);
+      }
+      const rawPara =
+        currentLesson.paragraphDrills?.[paragraphFileIdx]?.text ||
+        currentLesson.paragraphDrills?.[0]?.text ||
+        '';
+      return normalizeLines(rawPara);
+    }
+    const rawPara =
+      currentLesson.paragraphDrills?.[paragraphFileIdx]?.text ||
+      currentLesson.paragraphDrills?.[0]?.text ||
+      '';
+    return normalizeLines(rawPara);
+  }, [currentLesson, activeTab, wordFileIdx, sentenceFileIdx, paragraphFileIdx]);
 
-    return raw
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .split('\n')
-      .map((line) => line.trimEnd())
-      .filter((line) => line.length > 0)
-      .join('\n');
-  }, [currentLesson, activeTab, wordFileIdx, paragraphFileIdx]);
-
-  const activeFileIndex = activeTab === 'word' ? wordFileIdx : activeTab === 'paragraph' ? paragraphFileIdx : 0;
+  const activeFileIndex =
+    activeTab === 'word'
+      ? wordFileIdx
+      : activeTab === 'sentence'
+      ? sentenceFileIdx
+      : activeTab === 'paragraph'
+      ? paragraphFileIdx
+      : 0;
 
   const {
     charIndex,
@@ -105,12 +135,13 @@ export default function App() {
     setShowCourseMenu(true);
   };
 
-  // Triggered when clicking any item (1.1 Key drill, 1.2 Word drill, etc.) in CourseDashboard
+  // Triggered when clicking any item (1.1 Key drill, 1.2 Word drill, 1.3 Sentence drill, etc.) in CourseDashboard
   const handleLaunchDrill = (lessonId, drillType, fileIdx = 0) => {
     setActiveLessonId(lessonId);
     storageService.saveActiveLessonId(lessonId);
     setActiveTab(drillType);
     if (drillType === 'word') setWordFileIdx(fileIdx);
+    if (drillType === 'sentence') setSentenceFileIdx(fileIdx);
     if (drillType === 'paragraph') setParagraphFileIdx(fileIdx);
     setShowCourseMenu(false);
     resetDrill();
@@ -125,6 +156,8 @@ export default function App() {
     if (activeTab === 'key') {
       handleTabChange('word');
     } else if (activeTab === 'word') {
+      handleTabChange('sentence');
+    } else if (activeTab === 'sentence') {
       handleTabChange('paragraph');
     } else {
       if (activeLessonId < LESSONS.length) {
@@ -151,7 +184,7 @@ export default function App() {
         />
       )}
 
-      {/* TypingMaster-Style Course Hub (Numbers 1-12 at top, numbered sub-lessons, right sidebar) */}
+      {/* TypingMaster-Style Course Hub */}
       {showCourseMenu && (
         <CourseDashboard
           activeLessonId={activeLessonId}

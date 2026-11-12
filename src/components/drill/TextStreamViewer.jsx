@@ -12,6 +12,7 @@ export default function TextStreamViewer({
 }) {
   const isKeyDrill = activeTab === 'key';
   const isWordDrill = activeTab === 'word';
+  const isSentenceDrill = activeTab === 'sentence';
   const isParagraphDrill = activeTab === 'paragraph';
 
   // Renders a single mechanical keycap in Key Drill mode
@@ -80,7 +81,7 @@ export default function TextStreamViewer({
     };
   }, [text, isKeyDrill, charIndex]);
 
-  // Group characters into lines with global indices (for Word & Paragraph Drills)
+  // Group characters into lines with global indices (for Word, Sentence & Paragraph Drills)
   const textLines = useMemo(() => {
     if (isKeyDrill) return [];
     const lines = [];
@@ -102,6 +103,34 @@ export default function TextStreamViewer({
     }
     return lines;
   }, [text, isKeyDrill]);
+
+  // Compute active single line for Sentence Drill
+  const sentenceLineData = useMemo(() => {
+    if (!isSentenceDrill || textLines.length === 0) return null;
+
+    let activeLineIdx = textLines.findIndex(
+      (line) => charIndex >= line.startIdx && charIndex <= line.endIdx
+    );
+    if (activeLineIdx === -1) {
+      activeLineIdx = textLines.length - 1;
+    }
+
+    const activeLine = textLines[activeLineIdx];
+    let activeWordEnd = activeLine.endIdx;
+    for (let j = charIndex; j <= activeLine.endIdx; j++) {
+      if (text[j] === ' ' || text[j] === '\n') {
+        activeWordEnd = j - 1;
+        break;
+      }
+    }
+
+    return {
+      activeLine,
+      activeLineIdx,
+      totalLines: textLines.length,
+      activeWordEnd,
+    };
+  }, [isSentenceDrill, textLines, charIndex, text]);
 
   // Compute the active 3-row page for Paragraph Drill
   const paragraphPageData = useMemo(() => {
@@ -159,6 +188,11 @@ export default function TextStreamViewer({
               BLOCK {keyCapPageData.pageIndex + 1} / {keyCapPageData.totalPages}
             </span>
           )}
+          {sentenceLineData && (
+            <span className="text-cyan-400">
+              SENTENCE {sentenceLineData.activeLineIdx + 1} / {sentenceLineData.totalLines}
+            </span>
+          )}
           {paragraphPageData && (
             <span className="text-cyan-400">
               BLOCK {paragraphPageData.pageIndex + 1} / {paragraphPageData.totalPages}
@@ -179,6 +213,8 @@ export default function TextStreamViewer({
             ? 'pt-2 px-2'
             : isWordDrill
             ? 'flex flex-col items-center gap-5 pt-4 px-4 font-mono'
+            : isSentenceDrill
+            ? 'flex items-center justify-center px-6 font-mono'
             : 'flex flex-col justify-between py-2 px-4 sm:px-8 font-mono'
         }`}
       >
@@ -208,7 +244,7 @@ export default function TextStreamViewer({
           </div>
         )}
 
-        {/* MODE 2: WORD DRILL (Centered Block with Anchored Right-Aligned Vanishing Stream) */}
+        {/* MODE 2: WORD DRILL (Original Unchanged Word Drill) */}
         {isWordDrill && (
           <div className="w-fit mx-auto flex flex-col gap-5">
             {textLines.map((line, lineIdx) => {
@@ -316,7 +352,87 @@ export default function TextStreamViewer({
           </div>
         )}
 
-        {/* MODE 3: PARAGRAPH DRILL (Top 3-Row Reference + Horizontal Divider + Bottom Live Typing Area) */}
+        {/* MODE 3: SENTENCE DRILL (Single-Line Centered Vanishing Sentence Stream) */}
+        {isSentenceDrill && sentenceLineData && (
+          <div className="w-fit max-w-full mx-auto flex items-center justify-end text-2xl sm:text-4xl tracking-wide whitespace-nowrap">
+            {sentenceLineData.activeLine.items.map(({ char, index }) => {
+              if (index < charIndex) return null;
+
+              const isCurrent = index === charIndex;
+              const isInActiveWord = index <= sentenceLineData.activeWordEnd;
+
+              if (char === '\n') {
+                return (
+                  <span
+                    key={index}
+                    ref={isCurrent ? activeCharRef : null}
+                    className={`inline-flex items-center ml-2 px-2 py-0.5 rounded font-mono text-lg transition-all ${
+                      isCurrent
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-[0_0_16px_rgba(6,182,212,0.8)] animate-pulse'
+                        : 'text-emerald-400/75'
+                    }`}
+                  >
+                    {isCurrent && <span className="mr-1 text-xs">▶</span>}↵
+                  </span>
+                );
+              }
+
+              if (char === ' ') {
+                return (
+                  <span
+                    key={index}
+                    ref={isCurrent ? activeCharRef : null}
+                    className={`inline-flex items-center justify-center w-5 sm:w-7 transition-all ${
+                      isCurrent ? 'text-cyan-400' : ''
+                    }`}
+                  >
+                    {isCurrent ? (
+                      <span className="inline-flex items-center text-cyan-400 font-mono text-xl border-b-2 border-cyan-400 pb-0.5 animate-pulse">
+                        <span className="text-xs mr-0.5">▶</span>␣
+                      </span>
+                    ) : (
+                      '\u00A0'
+                    )}
+                  </span>
+                );
+              }
+
+              return (
+                <span
+                  key={index}
+                  ref={isCurrent ? activeCharRef : null}
+                  className={`inline-flex items-center transition-colors duration-75 ${
+                    isCurrent
+                      ? 'text-cyan-400 font-semibold'
+                      : isInActiveWord
+                      ? 'text-cyan-400 font-normal'
+                      : 'text-emerald-400/75'
+                  }`}
+                >
+                  {isCurrent && (
+                    <span
+                      aria-hidden="true"
+                      className="text-cyan-400 text-base sm:text-xl mr-1.5 select-none"
+                    >
+                      ▶
+                    </span>
+                  )}
+                  <span
+                    className={
+                      isCurrent
+                        ? 'underline decoration-cyan-400 decoration-[3px] underline-offset-[10px]'
+                        : ''
+                    }
+                  >
+                    {char}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* MODE 4: PARAGRAPH DRILL (Top 3-Row Reference + Horizontal Divider + Bottom Live Typing Area) */}
         {isParagraphDrill && paragraphPageData && (
           <div className="w-full max-w-3xl mx-auto flex-1 flex flex-col justify-center gap-2.5 py-0.5">
             {/* TOP PANE: 3 Reference Rows */}

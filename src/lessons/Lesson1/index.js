@@ -3,6 +3,7 @@ import keyDrillText from './keydrill.txt?raw';
 import wordDrillText from './worddrill.txt?raw';
 // import { wordDrills } from './wordDrills';
 import { paragraphDrills } from './paragraphDrills';
+import sentenceDrillText from './sentencedrill.txt?raw';
 
 export const Lesson1 = {
   id: 1,
@@ -10,9 +11,15 @@ export const Lesson1 = {
   keys: 'ASDF JKL;',
   description: 'Master the foundational home row anchors, home finger resting keys, and core rhythm.',
   badge: 'Foundation',
-  keyDrill:keyDrillText,
+  keyDrill: keyDrillText,
   wordDrills: [
     { name: 'Word Drill 1', text: wordDrillText },
+  ],
+  sentenceDrills: [
+    {
+      name: 'Sentence Drill 1',
+      text: sentenceDrillText.trim(),
+    },
   ],
   paragraphDrills,
 };
