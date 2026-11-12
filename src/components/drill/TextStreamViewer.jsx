@@ -60,16 +60,25 @@ export default function TextStreamViewer({
     );
   };
 
-  // Group characters into strict rows of 10 keycaps each (for Key Drill)
-  const keyCapRows = useMemo(() => {
-    if (!isKeyDrill) return [];
+  // Group characters into strict rows of 10 keycaps each, paginated in 5-row blocks (for Key Drill)
+  const keyCapPageData = useMemo(() => {
+    if (!isKeyDrill) return null;
     const chars = text.split('').map((char, index) => ({ char, index }));
     const rows = [];
     for (let i = 0; i < chars.length; i += 10) {
       rows.push(chars.slice(i, i + 10));
     }
-    return rows;
-  }, [text, isKeyDrill]);
+
+    const activeRowIdx = Math.min(rows.length - 1, Math.floor(charIndex / 10));
+    const pageIndex = Math.max(0, Math.floor(activeRowIdx / 5));
+    const pageRows = rows.slice(pageIndex * 5, pageIndex * 5 + 5);
+
+    return {
+      pageRows,
+      pageIndex,
+      totalPages: Math.max(1, Math.ceil(rows.length / 5)),
+    };
+  }, [text, isKeyDrill, charIndex]);
 
   // Group characters into lines with global indices (for Word & Paragraph Drills)
   const textLines = useMemo(() => {
@@ -145,6 +154,11 @@ export default function TextStreamViewer({
           )}
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+          {keyCapPageData && (
+            <span className="text-cyan-400">
+              BLOCK {keyCapPageData.pageIndex + 1} / {keyCapPageData.totalPages}
+            </span>
+          )}
           {paragraphPageData && (
             <span className="text-cyan-400">
               BLOCK {paragraphPageData.pageIndex + 1} / {paragraphPageData.totalPages}
@@ -168,12 +182,12 @@ export default function TextStreamViewer({
             : 'flex flex-col justify-between py-2 px-4 sm:px-8 font-mono'
         }`}
       >
-        {/* MODE 1: KEY DRILL (2-Column 10-Keycap Mechanical Grid) */}
-        {isKeyDrill && (
+        {/* MODE 1: KEY DRILL (Paginated 5-Row x 10-Keycap Mechanical Grid) */}
+        {isKeyDrill && keyCapPageData && (
           <div className="w-fit mx-auto flex flex-col gap-2.5">
-            {keyCapRows.map((row, rowIdx) => (
+            {keyCapPageData.pageRows.map((row, rowIdx) => (
               <div
-                key={rowIdx}
+                key={keyCapPageData.pageIndex * 5 + rowIdx}
                 className="flex items-center justify-start gap-1.5 sm:gap-2 shrink-0"
               >
                 {row.map(({ char, index }, idxInRow) => (
