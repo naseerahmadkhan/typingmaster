@@ -40,6 +40,7 @@ function rangeHasError(text, typedChars, start, end, maxIndex) {
 
 export default function TextStreamViewer({
   text,
+  rawKeyDrill,
   charIndex,
   typedChars = [],
   targetKeyInfo,
@@ -52,25 +53,70 @@ export default function TextStreamViewer({
   const isSentenceDrill = activeTab === 'sentence';
   const isParagraphDrill = activeTab === 'paragraph';
 
-  // Group characters into 10-cap rows, paginated in 5-row blocks
-  const keyCapPageData = useMemo(() => {
-    if (!isKeyDrill || !text) return null;
-    const chars = text.split('').map((char, index) => ({ char, index }));
-    const rows = [];
-    for (let i = 0; i < chars.length; i += 10) {
-      rows.push(chars.slice(i, i + 10));
+  // Group key drill characters into structured exercises (Image 1 layout: 2 rows of words)
+  const keyDrillData = useMemo(() => {
+    if (!isKeyDrill) return null;
+    const raw = rawKeyDrill || text;
+    if (!raw) return null;
+
+    const lines = raw
+      .replace(/\$loop\$/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    let globalCharIdx = 0;
+    const exercises = [];
+
+    lines.forEach((line, lineIdx) => {
+      const words = line.split(/\s+/).filter(Boolean);
+      if (words.length === 0) return;
+
+      const exerciseStartIdx = globalCharIdx;
+      const wordObjects = words.map((word) => {
+        const chars = [];
+        for (let i = 0; i < word.length; i++) {
+          chars.push({ char: word[i], index: globalCharIdx++ });
+        }
+        // Every word in key drill ends with a Space
+        chars.push({ char: ' ', index: globalCharIdx++ });
+        return chars;
+      });
+
+      const exerciseEndIdx = globalCharIdx - 1;
+
+      // Split words into 2 rows (Word 0 & 1 on row1, Word 2 & 3 on row2)
+      const half = Math.ceil(wordObjects.length / 2);
+      const row1 = wordObjects.slice(0, half);
+      const row2 = wordObjects.slice(half);
+
+      exercises.push({
+        id: lineIdx,
+        startIdx: exerciseStartIdx,
+        endIdx: exerciseEndIdx,
+        row1,
+        row2,
+      });
+    });
+
+    if (exercises.length === 0) return null;
+
+    let activeExerciseIdx = exercises.findIndex(
+      (ex) => charIndex >= ex.startIdx && charIndex <= ex.endIdx
+    );
+    if (activeExerciseIdx === -1) {
+      activeExerciseIdx = exercises.length - 1;
     }
 
-    const activeRowIdx = Math.min(rows.length - 1, Math.floor(charIndex / 10));
-    const pageIndex = Math.max(0, Math.floor(activeRowIdx / 5));
-    const pageRows = rows.slice(pageIndex * 5, pageIndex * 5 + 5);
-
     return {
-      pageRows,
-      pageIndex,
-      totalPages: Math.max(1, Math.ceil(rows.length / 5)),
+      exercises,
+      currentExercise: exercises[activeExerciseIdx],
+      activeExerciseIdx,
+      totalExercises: exercises.length,
     };
-  }, [text, isKeyDrill, charIndex]);
+  }, [isKeyDrill, rawKeyDrill, text, charIndex]);
 
   // Split text into lines with start and end indices
   const textLines = useMemo(() => {
@@ -153,9 +199,9 @@ export default function TextStreamViewer({
           )}
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
-          {keyCapPageData && (
+          {keyDrillData && (
             <span className="text-cyan-400">
-              BLOCK {keyCapPageData.pageIndex + 1} / {keyCapPageData.totalPages}
+              EXERCISE {keyDrillData.activeExerciseIdx + 1} / {keyDrillData.totalExercises}
             </span>
           )}
           {sentenceData && (
@@ -180,7 +226,7 @@ export default function TextStreamViewer({
         onWheel={(e) => e.preventDefault()}
         className={`flex-1 overflow-hidden select-none cursor-default transition-all ${
           isKeyDrill
-            ? 'pt-2 px-2'
+            ? 'flex flex-col items-center justify-center py-4 px-4 sm:px-8'
             : isWordDrill
             ? 'flex flex-col items-center gap-5 pt-4 px-4 font-mono'
             : isSentenceDrill
@@ -188,9 +234,9 @@ export default function TextStreamViewer({
             : 'flex flex-col justify-between py-2 px-4 sm:px-8 font-mono'
         }`}
       >
-        {isKeyDrill && keyCapPageData && (
+        {isKeyDrill && keyDrillData && (
           <KeyDrillView
-            pageData={keyCapPageData}
+            drillData={keyDrillData}
             charIndex={charIndex}
             activeCharRef={activeCharRef}
           />
@@ -229,25 +275,41 @@ export default function TextStreamViewer({
 }
 
 /**
- * Key Drill: Tactile 3D mechanical keycaps rendered in rows of 10.
+ * Key Drill: Tactile 3D mechanical keycaps rendered in a 2-row x 2-column exercise format matching Typing Master (Image 1).
+ * - Row 1: Word 0 + Space (Left column), Word 1 + Space (Right column)
+ * - Row 2: Word 2 + Space (Left column), Word 3 + Space (Right column)
  */
-function KeyDrillView({ pageData, charIndex, activeCharRef }) {
+function KeyDrillView({ drillData, charIndex, activeCharRef }) {
+  const { currentExercise, activeExerciseIdx, totalExercises } = drillData;
+  const { row1, row2 } = currentExercise;
+
+  const maxCols = Math.max(row1.length, row2.length);
+  const columns = [];
+  for (let c = 0; c < maxCols; c++) {
+    columns.push({
+      top: row1[c] || null,
+      bottom: row2[c] || null,
+    });
+  }
+
   const renderCap = (char, index) => {
     const isTyped = index < charIndex;
     const isCurrent = index === charIndex;
-    const isEnter = char === '\n';
     const isSpace = char === ' ';
 
-    let sizeClasses = 'w-9 h-9 sm:w-10 sm:h-10 text-base sm:text-lg';
-    if (isEnter || isSpace) {
-      sizeClasses = 'w-16 sm:w-20 h-9 sm:h-10 text-[11px] tracking-wider';
+    let sizeClasses = 'w-10 h-10 sm:w-12 sm:h-12 text-base sm:text-xl';
+    if (isSpace) {
+      sizeClasses = 'min-w-[64px] sm:min-w-[80px] h-10 sm:h-12 px-3 sm:px-4 text-xs sm:text-sm tracking-wider';
     }
 
-    let styleClasses = 'bg-gradient-to-b from-[#1e2738] to-[#141b29] border-slate-700/90 text-slate-200 shadow-[0_3px_0_#090d16]';
+    let styleClasses =
+      'bg-gradient-to-b from-[#1e2738] to-[#141b29] border-slate-700/90 text-slate-200 shadow-[0_3px_0_#090d16]';
     if (isCurrent) {
-      styleClasses = 'bg-gradient-to-b from-emerald-400 to-emerald-500 border-emerald-200 text-slate-950 shadow-[0_3px_0_#047857,0_0_18px_rgba(52,211,153,0.75)] -translate-y-0.5 scale-105 z-10';
+      styleClasses =
+        'bg-gradient-to-b from-emerald-400 to-emerald-500 border-emerald-200 text-slate-950 font-black shadow-[0_3px_0_#047857,0_0_18px_rgba(52,211,153,0.75)] -translate-y-0.5 scale-105 z-10';
     } else if (isTyped) {
-      styleClasses = 'bg-emerald-950/30 border-emerald-500/30 text-emerald-400/80 shadow-[0_1px_0_#064e3b] translate-y-[1px]';
+      styleClasses =
+        'bg-emerald-950/30 border-emerald-500/30 text-emerald-400/80 shadow-[0_1px_0_#064e3b] translate-y-[1px]';
     }
 
     return (
@@ -256,33 +318,40 @@ function KeyDrillView({ pageData, charIndex, activeCharRef }) {
         ref={isCurrent ? activeCharRef : null}
         className={`inline-flex items-center justify-center rounded-lg border font-mono font-bold transition-all duration-100 select-none shrink-0 ${sizeClasses} ${styleClasses}`}
       >
-        {isEnter ? 'Enter ↵' : isSpace ? 'Space' : char}
+        {isSpace ? 'Space' : char}
       </span>
     );
   };
 
   return (
-    <div className="w-fit mx-auto flex flex-col gap-2.5">
-      {pageData.pageRows.map((row, rowIdx) => (
-        <div
-          key={pageData.pageIndex * 5 + rowIdx}
-          className="flex items-center justify-start gap-1.5 sm:gap-2 shrink-0"
-        >
-          {row.map(({ char, index }, idxInRow) => (
-            <React.Fragment key={index}>
-              {renderCap(char, index)}
-              {idxInRow === 4 && (
-                <span
-                  aria-hidden="true"
-                  className="w-6 sm:w-10 h-6 flex items-center justify-center shrink-0"
-                >
-                  <span className="w-[1px] h-5 bg-slate-800/90 rounded-full" />
-                </span>
+    <div className="w-full max-w-4xl mx-auto my-auto flex flex-col items-center justify-center py-6 sm:py-10">
+      <div className="w-full rounded-3xl bg-[#0f1420]/80 border border-slate-800/90 shadow-[0_12px_40px_rgba(0,0,0,0.6)] p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center min-h-[220px] relative">
+        {/* Top Progress Badge */}
+        <div className="absolute top-4 left-6 flex items-center gap-2 text-[11px] font-mono text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-cyan-400" />
+          <span>
+            Exercise {activeExerciseIdx + 1} of {totalExercises}
+          </span>
+        </div>
+
+        {/* 2-Row x 2-Column Keycaps Layout */}
+        <div className="flex items-center justify-center gap-8 sm:gap-14 md:gap-16 pt-2">
+          {columns.map((col, colIdx) => (
+            <div key={colIdx} className="flex flex-col items-start gap-3 sm:gap-4">
+              {col.top && (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {col.top.map(({ char, index }) => renderCap(char, index))}
+                </div>
               )}
-            </React.Fragment>
+              {col.bottom && (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {col.bottom.map(({ char, index }) => renderCap(char, index))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }

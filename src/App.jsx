@@ -34,18 +34,34 @@ export default function App() {
   const currentLesson = useMemo(() => getLessonById(activeLessonId), [activeLessonId]);
 
   const currentDrillText = useMemo(() => {
-    let raw = '';
     if (activeTab === 'key') {
-      raw = currentLesson.keyDrill || '';
-    } else if (activeTab === 'word') {
+      const rawKey = currentLesson.keyDrill || '';
+      return rawKey
+        .replace(/\$loop\$/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => {
+          const words = line.split(/\s+/).filter(Boolean);
+          return words.length > 0 ? words.join(' ') + ' ' : '';
+        })
+        .filter((line) => line.length > 0)
+        .join('');
+    }
+
+    let raw = '';
+    if (activeTab === 'word') {
       raw = currentLesson.wordDrills[wordFileIdx]?.text || '';
     } else if (activeTab === 'sentence') {
       raw = currentLesson.sentenceDrills?.[sentenceFileIdx]?.text || currentLesson.sentenceDrill || '';
     } else if (activeTab === 'paragraph') {
-      raw = currentLesson.paragraphDrills[paragraphFileIdx]?.text || '';
+      raw = (currentLesson.paragraphDrills || currentLesson.paragraphDrill)?.[paragraphFileIdx]?.text || '';
     }
 
     return raw
+      .replace(/\$loop\$/g, '')
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
       .split('\n')
@@ -201,6 +217,7 @@ export default function App() {
           <div className="flex-1 min-h-0">
             <TextStreamViewer
               text={currentDrillText}
+              rawKeyDrill={currentLesson.keyDrill}
               charIndex={charIndex}
               typedChars={typedChars}
               targetKeyInfo={targetKeyInfo}
