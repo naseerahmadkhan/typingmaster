@@ -217,14 +217,14 @@ export default function CourseDashboard({
           </div>
 
           {/* Vertical Sidebar Navigation Links */}
-          <nav className="space-y-1.5">
-            <button
-              onClick={() => {}}
+          <nav className="space-y-1.5" aria-label="Course navigation">
+            <div
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-transparent border-l-4 border-cyan-400 text-white font-bold text-xs tracking-wider uppercase"
+              aria-current="page"
             >
               <BookOpen className="w-4 h-4 text-cyan-400" />
               <span>STUDYING</span>
-            </button>
+            </div>
 
             <button
               onClick={onCloseToWorkspace}
