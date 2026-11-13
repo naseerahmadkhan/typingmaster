@@ -24,12 +24,11 @@ export function useTypingEngine({
   onFinished,
 }) {
   const [charIndex, setCharIndex] = useState(0);
-  const [typedChars, setTypedChars] = useState([]); // Stores exact user keystrokes in paragraph mode
+  const [typedChars, setTypedChars] = useState([]);
   const [isFinished, setIsFinished] = useState(false);
   const [pressedKey, setPressedKey] = useState(null);
   const [lastMistakeKey, setLastMistakeKey] = useState(null);
 
-  // Metrics state
   const [startTime, setStartTime] = useState(null);
   const [totalKeystrokes, setTotalKeystrokes] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
@@ -38,6 +37,21 @@ export function useTypingEngine({
   const textScrollContainerRef = useRef(null);
   const activeCharRef = useRef(null);
   const isParagraphMode = drillType === 'paragraph';
+
+  // Synchronize state when text or drill type changes during render (avoids cascading effect renders)
+  const [prevDrill, setPrevDrill] = useState({ text, drillType });
+  if (prevDrill.text !== text || prevDrill.drillType !== drillType) {
+    setPrevDrill({ text, drillType });
+    setCharIndex(0);
+    setTypedChars([]);
+    setIsFinished(false);
+    setPressedKey(null);
+    setLastMistakeKey(null);
+    setStartTime(null);
+    setTotalKeystrokes(0);
+    setErrorCount(0);
+    setElapsedSeconds(0);
+  }
 
   const resetDrill = useCallback(() => {
     setCharIndex(0);
@@ -54,11 +68,7 @@ export function useTypingEngine({
     }
   }, []);
 
-  useEffect(() => {
-    resetDrill();
-  }, [text, drillType, resetDrill]);
-
-  // Live timer
+  // Update timer every 250ms while active
   useEffect(() => {
     if (!startTime || isFinished) return;
     const interval = setInterval(() => {
@@ -67,7 +77,7 @@ export function useTypingEngine({
     return () => clearInterval(interval);
   }, [startTime, isFinished]);
 
-  // Target key metadata
+  // Derive target key info and finger recommendations
   const targetKeyInfo = useMemo(() => {
     if (!text || charIndex >= text.length) {
       return { char: '', label: 'DONE', finger: null, shift: false };
@@ -91,29 +101,28 @@ export function useTypingEngine({
     };
   }, [text, charIndex]);
 
-  // Keyboard listener
   useEffect(() => {
     if (!isEnabled || isFinished || !text) return;
 
     const handleKeyDown = (e) => {
-      // Ignore modifier-only keys
+      // Ignore standalone modifiers
       if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
         return;
       }
 
+      // Prevent default page scroll actions
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'Backspace') {
         e.preventDefault();
       }
 
-      // Visual press feedback on 60% keyboard
       const visualKey = e.key === ' ' ? ' ' : e.key === 'Enter' ? 'Enter' : e.key.toLowerCase();
       setPressedKey(visualKey);
       setTimeout(() => setPressedKey(null), 130);
 
-      // Handle Backspace in Paragraph Mode (allows correcting current line before Enter)
+      // Paragraph mode allows backspacing mistakes on the current line
       if (isParagraphMode && e.key === 'Backspace') {
         if (charIndex > 0 && text[charIndex - 1] !== '\n') {
-          audioEngine.playClick('Backspace');
+          audioEngine.playClick();
           setCharIndex((prev) => prev - 1);
           setTypedChars((prev) => prev.slice(0, -1));
           setLastMistakeKey(null);
@@ -121,7 +130,6 @@ export function useTypingEngine({
         return;
       }
 
-      // Normalize key input
       let inputChar = e.key;
       if (e.key === 'Enter') inputChar = '\n';
       if (inputChar.length !== 1) return;
@@ -135,7 +143,7 @@ export function useTypingEngine({
       setTotalKeystrokes((prev) => prev + 1);
 
       if (isParagraphMode) {
-        // PARAGRAPH MODE: Allow typing wrong characters and advance cursor
+        // Enforce newline matching strictly to prevent line drift
         if (expectedChar === '\n' && inputChar !== '\n') {
           audioEngine.playError();
           setErrorCount((prev) => prev + 1);
@@ -150,7 +158,7 @@ export function useTypingEngine({
         }
 
         if (isCorrect) {
-          audioEngine.playClick(e.key);
+          audioEngine.playClick();
           setLastMistakeKey(null);
         } else {
           audioEngine.playError();
@@ -166,9 +174,9 @@ export function useTypingEngine({
           finishDrill(now, nextIdx, isCorrect ? errorCount : errorCount + 1);
         }
       } else {
-        // STRICT MODE (Key Drill & Word Drill): Block until exact key is pressed
+        // Strict mode: Key and Word drills require the exact key before advancing
         if (isCorrect) {
-          audioEngine.playClick(e.key);
+          audioEngine.playClick();
           setLastMistakeKey(null);
           const nextIdx = charIndex + 1;
           setCharIndex(nextIdx);
@@ -222,7 +230,6 @@ export function useTypingEngine({
     onFinished,
   ]);
 
-  // Live WPM & Accuracy calculation
   const stats = useMemo(() => {
     const mins = Math.max(1 / 60, elapsedSeconds / 60);
     const wpm = startTime ? Math.round(charIndex / 5 / mins) : 0;
@@ -234,8 +241,10 @@ export function useTypingEngine({
 
     return {
       wpm,
+      grossWPM: wpm,
       accuracy,
       errors: errorCount,
+      errorCount,
       elapsedSeconds,
       progress,
     };

@@ -2,14 +2,16 @@ import React from 'react';
 import { Award, RotateCcw, ChevronRight, Layers } from 'lucide-react';
 
 export default function CompletionModal({
-  stats,
+  stats = {},
   studentName,
   activeLesson,
   onRestart,
   onNextDrill,
-  onChooseLesson
+  onChooseLesson,
 }) {
-  const { grossWPM, accuracy, errorCount } = stats;
+  const speed = stats.grossWPM ?? stats.wpm ?? 0;
+  const accuracy = stats.accuracy ?? 100;
+  const typos = stats.errorCount ?? stats.errors ?? 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -29,7 +31,7 @@ export default function CompletionModal({
           <div>
             <div className="text-[11px] text-slate-400 font-mono">SPEED</div>
             <div className="text-xl font-black text-white mt-0.5">
-              {grossWPM} <span className="text-xs text-cyan-400 font-normal">WPM</span>
+              {speed} <span className="text-xs text-cyan-400 font-normal">WPM</span>
             </div>
           </div>
           <div>
@@ -38,7 +40,7 @@ export default function CompletionModal({
           </div>
           <div>
             <div className="text-[11px] text-slate-400 font-mono">TYPOS</div>
-            <div className="text-xl font-black text-rose-400 mt-0.5">{errorCount}</div>
+            <div className="text-xl font-black text-rose-400 mt-0.5">{typos}</div>
           </div>
         </div>
 
@@ -46,14 +48,14 @@ export default function CompletionModal({
           <div className="flex gap-2.5">
             <button
               onClick={onRestart}
-              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-600 transition flex items-center justify-center gap-2 text-sm"
+              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-600 transition flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               <span>Repeat Drill</span>
             </button>
             <button
               onClick={onNextDrill}
-              className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm hover:scale-[1.02]"
+              className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm hover:scale-[1.02] cursor-pointer"
             >
               <span>Next Drill</span>
               <ChevronRight className="w-4 h-4" />
@@ -62,7 +64,7 @@ export default function CompletionModal({
 
           <button
             onClick={onChooseLesson}
-            className="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
             <span>Select Another Lesson</span>

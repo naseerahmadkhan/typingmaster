@@ -8,7 +8,6 @@ import {
   Gauge,
   UserCheck,
   BarChart3,
-  Settings,
   X,
   Keyboard
 } from 'lucide-react';

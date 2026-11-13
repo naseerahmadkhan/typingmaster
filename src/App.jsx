@@ -105,7 +105,6 @@ export default function App() {
     setShowCourseMenu(true);
   };
 
-  // Triggered when clicking any item (1.1 Key drill, 1.2 Word drill, etc.) in CourseDashboard
   const handleLaunchDrill = (lessonId, drillType, fileIdx = 0) => {
     setActiveLessonId(lessonId);
     storageService.saveActiveLessonId(lessonId);
@@ -151,7 +150,7 @@ export default function App() {
         />
       )}
 
-      {/* TypingMaster-Style Course Hub (Numbers 1-12 at top, numbered sub-lessons, right sidebar) */}
+      {/* Course Dashboard Hub */}
       {showCourseMenu && (
         <CourseDashboard
           activeLessonId={activeLessonId}
@@ -183,7 +182,7 @@ export default function App() {
         onOpenLessonMenu={() => setShowCourseMenu(true)}
       />
 
-      {/* Zero-Scroll Split Workspace */}
+      {/* Main Workspace */}
       <div className="flex-1 w-full max-w-[1600px] mx-auto p-2 sm:p-3 flex gap-3 overflow-hidden">
         <div className="flex-1 flex flex-col gap-2.5 min-w-0 h-full overflow-hidden">
           <div className="flex-1 min-h-0">

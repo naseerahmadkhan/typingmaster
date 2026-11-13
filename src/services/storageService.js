@@ -56,7 +56,7 @@ export const storageService = {
     }
   },
 
-  async recordDrillResult(payload) {
+  recordDrillResult(payload) {
     try {
       const existing = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENT_STATS) || '[]');
       existing.push({ ...payload, timestamp: new Date().toISOString() });
