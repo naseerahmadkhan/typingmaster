@@ -1,5 +1,6 @@
 import { keyDrill } from './keyDrill';
 import { wordDrills } from './wordDrills';
+import { sentenceDrills } from './sentenceDrills';
 import { paragraphDrills } from './paragraphDrills';
 
 export const Lesson2 = {
@@ -10,6 +11,7 @@ export const Lesson2 = {
   badge: 'Level 2',
   keyDrill,
   wordDrills,
+  sentenceDrills,
   paragraphDrills,
 };
 

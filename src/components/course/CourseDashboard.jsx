@@ -23,7 +23,11 @@ export default function CourseDashboard({
 }) {
   const currentLesson = getLessonById(activeLessonId);
 
-  // Build the structured numbered modules for the active lesson (e.g., 1.1 Key drill, 1.2 Word drill, 1.3 Paragraph drill)
+  const wordCount = currentLesson.wordDrills?.length || 0;
+  const sentenceDrills = currentLesson.sentenceDrills || [];
+  const sentenceCount = sentenceDrills.length;
+
+  // Build the structured numbered modules for the active lesson (Key, Word, Sentence, Paragraph)
   const lessonItems = [
     {
       num: `${currentLesson.id}.1`,
@@ -41,8 +45,16 @@ export default function CourseDashboard({
       duration: '3 - 5 min.',
       isCompleted: Boolean(completedDrills[`${currentLesson.id}_word_${idx}`]),
     })),
+    ...sentenceDrills.map((sd, idx) => ({
+      num: `${currentLesson.id}.${wordCount + idx + 2}`,
+      type: 'sentence',
+      fileIdx: idx,
+      title: sd.name || `Sentence drill ${idx + 1}`,
+      duration: '3 - 5 min.',
+      isCompleted: Boolean(completedDrills[`${currentLesson.id}_sentence_${idx}`]),
+    })),
     ...currentLesson.paragraphDrills.map((pd, idx) => ({
-      num: `${currentLesson.id}.${currentLesson.wordDrills.length + idx + 2}`,
+      num: `${currentLesson.id}.${wordCount + sentenceCount + idx + 2}`,
       type: 'paragraph',
       fileIdx: idx,
       title: pd.name || `Paragraph drill ${idx + 1}`,

@@ -1,5 +1,6 @@
 import keyDrillText from './keydrill.txt?raw';
 import wordDrillText from './worddrill.txt?raw';
+import { sentenceDrills } from './sentenceDrills';
 import { paragraphDrills } from './paragraphDrills';
 
 export const Lesson1 = {
@@ -12,6 +13,7 @@ export const Lesson1 = {
   wordDrills: [
     { name: 'Word Drill 1', text: wordDrillText },
   ],
+  sentenceDrills,
   paragraphDrills,
 };
 

@@ -27,6 +27,7 @@ export default function App() {
   const [activeLessonId, setActiveLessonId] = useState(() => storageService.getActiveLessonId());
   const [activeTab, setActiveTab] = useState('key');
   const [wordFileIdx, setWordFileIdx] = useState(0);
+  const [sentenceFileIdx, setSentenceFileIdx] = useState(0);
   const [paragraphFileIdx, setParagraphFileIdx] = useState(0);
   const [completedDrills, setCompletedDrills] = useState(() => storageService.getCompletedDrills());
 
@@ -38,6 +39,8 @@ export default function App() {
       raw = currentLesson.keyDrill || '';
     } else if (activeTab === 'word') {
       raw = currentLesson.wordDrills[wordFileIdx]?.text || '';
+    } else if (activeTab === 'sentence') {
+      raw = currentLesson.sentenceDrills?.[sentenceFileIdx]?.text || currentLesson.sentenceDrill || '';
     } else if (activeTab === 'paragraph') {
       raw = currentLesson.paragraphDrills[paragraphFileIdx]?.text || '';
     }
@@ -49,9 +52,16 @@ export default function App() {
       .map((line) => line.trimEnd())
       .filter((line) => line.length > 0)
       .join('\n');
-  }, [currentLesson, activeTab, wordFileIdx, paragraphFileIdx]);
+  }, [currentLesson, activeTab, wordFileIdx, sentenceFileIdx, paragraphFileIdx]);
 
-  const activeFileIndex = activeTab === 'word' ? wordFileIdx : activeTab === 'paragraph' ? paragraphFileIdx : 0;
+  const activeFileIndex =
+    activeTab === 'word'
+      ? wordFileIdx
+      : activeTab === 'sentence'
+      ? sentenceFileIdx
+      : activeTab === 'paragraph'
+      ? paragraphFileIdx
+      : 0;
 
   const {
     charIndex,
@@ -110,6 +120,7 @@ export default function App() {
     storageService.saveActiveLessonId(lessonId);
     setActiveTab(drillType);
     if (drillType === 'word') setWordFileIdx(fileIdx);
+    if (drillType === 'sentence') setSentenceFileIdx(fileIdx);
     if (drillType === 'paragraph') setParagraphFileIdx(fileIdx);
     setShowCourseMenu(false);
     resetDrill();
@@ -124,6 +135,8 @@ export default function App() {
     if (activeTab === 'key') {
       handleTabChange('word');
     } else if (activeTab === 'word') {
+      handleTabChange('sentence');
+    } else if (activeTab === 'sentence') {
       handleTabChange('paragraph');
     } else {
       if (activeLessonId < LESSONS.length) {

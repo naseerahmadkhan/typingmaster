@@ -49,6 +49,7 @@ export default function TextStreamViewer({
 }) {
   const isKeyDrill = activeTab === 'key';
   const isWordDrill = activeTab === 'word';
+  const isSentenceDrill = activeTab === 'sentence';
   const isParagraphDrill = activeTab === 'paragraph';
 
   // Group characters into 10-cap rows, paginated in 5-row blocks
@@ -93,6 +94,24 @@ export default function TextStreamViewer({
     }
     return lines;
   }, [text, isKeyDrill]);
+
+  // Active sentence data for Sentence Drill
+  const sentenceData = useMemo(() => {
+    if (!isSentenceDrill || textLines.length === 0) return null;
+
+    let activeLineIdx = textLines.findIndex(
+      (line) => charIndex >= line.startIdx && charIndex <= line.endIdx
+    );
+    if (activeLineIdx === -1) {
+      activeLineIdx = textLines.length - 1;
+    }
+
+    return {
+      sentence: textLines[activeLineIdx],
+      sentenceIndex: activeLineIdx,
+      totalSentences: textLines.length,
+    };
+  }, [isSentenceDrill, textLines, charIndex]);
 
   // Paginate paragraph drills in 3-line blocks
   const paragraphPageData = useMemo(() => {
@@ -139,6 +158,11 @@ export default function TextStreamViewer({
               BLOCK {keyCapPageData.pageIndex + 1} / {keyCapPageData.totalPages}
             </span>
           )}
+          {sentenceData && (
+            <span className="text-cyan-400">
+              SENTENCE {sentenceData.sentenceIndex + 1} / {sentenceData.totalSentences}
+            </span>
+          )}
           {paragraphPageData && (
             <span className="text-cyan-400">
               BLOCK {paragraphPageData.pageIndex + 1} / {paragraphPageData.totalPages}
@@ -159,6 +183,8 @@ export default function TextStreamViewer({
             ? 'pt-2 px-2'
             : isWordDrill
             ? 'flex flex-col items-center gap-5 pt-4 px-4 font-mono'
+            : isSentenceDrill
+            ? 'flex flex-col items-center justify-center py-4 px-4 sm:px-8'
             : 'flex flex-col justify-between py-2 px-4 sm:px-8 font-mono'
         }`}
       >
@@ -173,6 +199,15 @@ export default function TextStreamViewer({
         {isWordDrill && (
           <WordDrillView
             lines={textLines}
+            text={text}
+            charIndex={charIndex}
+            activeCharRef={activeCharRef}
+          />
+        )}
+
+        {isSentenceDrill && sentenceData && (
+          <SentenceDrillView
+            sentenceData={sentenceData}
             text={text}
             charIndex={charIndex}
             activeCharRef={activeCharRef}
@@ -357,6 +392,121 @@ function WordDrillView({ lines, text, charIndex, activeCharRef }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Sentence Drill: Zero-layout-shift stationary sentence view.
+ * - Left-aligned text inside a centered container so character (x, y) coordinates never shake or jitter.
+ * - The ▶ pointer sits permanently at the start of the sentence line.
+ * - All characters maintain consistent font metrics and weights to eliminate character-width popping.
+ * - Underline steps letter by letter smoothly.
+ * - On typing Enter ↵, the view seamlessly advances to the next sentence.
+ */
+function SentenceDrillView({ sentenceData, text, charIndex, activeCharRef }) {
+  const { sentence, sentenceIndex, totalSentences } = sentenceData;
+  const sentenceItems = sentence.items;
+
+  // Pre-calculate active word boundaries in the current sentence
+  const activeWordBounds = useMemo(() => {
+    return getWordBounds(text, charIndex);
+  }, [text, charIndex]);
+
+  return (
+    <div className="w-full max-w-4xl mx-auto my-auto flex flex-col items-center justify-center py-6 sm:py-10">
+      <div className="w-full rounded-3xl bg-[#0f1420]/80 border border-slate-800/90 shadow-[0_12px_40px_rgba(0,0,0,0.6)] p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center min-h-[180px] sm:min-h-[220px] relative">
+        
+        {/* Top Progress Badge */}
+        <div className="absolute top-4 left-6 flex items-center gap-2 text-[11px] font-mono text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-cyan-400" />
+          <span>Sentence {sentenceIndex + 1} of {totalSentences}</span>
+        </div>
+
+        {/* Stable Sentence Line Container (left-aligned inside centered wrapper) */}
+        <div className="w-fit max-w-full overflow-x-auto text-left flex items-baseline text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-serif font-normal tracking-wide leading-relaxed select-none py-2">
+          
+          {/* Stationary ▶ Badge at the beginning of the sentence line */}
+          <span
+            aria-hidden="true"
+            className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-blue-500 to-cyan-500 shadow-[0_2px_10px_rgba(6,182,212,0.35)] mr-3 sm:mr-4 select-none shrink-0 self-center"
+          >
+            <span className="text-white text-xs sm:text-sm font-bold ml-0.5">▶</span>
+          </span>
+
+          {/* Unbroken character sequence maintaining constant layout widths */}
+          <div className="inline whitespace-pre">
+            {sentenceItems.map(({ char, index }) => {
+              const isCurrent = index === charIndex;
+              const isTyped = index < charIndex;
+              const isEnter = char === '\n';
+              const isInActiveWord =
+                index >= activeWordBounds.start && index <= activeWordBounds.end;
+
+              if (isEnter) {
+                return (
+                  <span
+                    key={index}
+                    ref={isCurrent ? activeCharRef : null}
+                    className={`inline-block ml-1.5 transition-colors duration-75 ${
+                      isCurrent
+                        ? 'text-cyan-300 font-medium underline decoration-cyan-400 decoration-[3px] underline-offset-8'
+                        : isTyped
+                        ? 'text-slate-600'
+                        : 'text-cyan-400/80'
+                    }`}
+                  >
+                    ↵
+                  </span>
+                );
+              }
+
+              if (char === ' ') {
+                return (
+                  <span
+                    key={index}
+                    ref={isCurrent ? activeCharRef : null}
+                    className={`inline-block ${
+                      isCurrent
+                        ? 'underline decoration-cyan-400 decoration-[3px] underline-offset-8'
+                        : ''
+                    }`}
+                  >
+                    {' '}
+                  </span>
+                );
+              }
+
+              // Normal character styling: cyan blue from Word Drill
+              let textColor = 'text-cyan-400';
+              if (isTyped) {
+                textColor = 'text-slate-500';
+              } else if (isInActiveWord) {
+                textColor = 'text-cyan-300';
+              }
+
+              return (
+                <span
+                  key={index}
+                  ref={isCurrent ? activeCharRef : null}
+                  className={`inline-block transition-colors duration-75 ${textColor} ${
+                    isCurrent
+                      ? 'underline decoration-cyan-400 decoration-[3px] underline-offset-8 font-medium text-cyan-200'
+                      : ''
+                  }`}
+                >
+                  {char}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Subtle Bottom Instruction */}
+        <div className="absolute bottom-3 right-6 text-[10px] font-mono text-slate-500 hidden sm:block">
+          Press <strong className="text-slate-300">↵ Enter</strong> at the end of each sentence
+        </div>
+      </div>
     </div>
   );
 }
