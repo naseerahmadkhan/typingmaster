@@ -1,7 +1,7 @@
-import { keyDrill } from './keyDrill';
-import { wordDrills } from './wordDrills';
-import { sentenceDrills } from './sentenceDrills';
-import { paragraphDrills } from './paragraphDrills';
+import keyDrillText from './keydrill.txt?raw';
+import wordDrillText from './worddrill.txt?raw';
+import sentenceDrillText from './sentencedrill.txt?raw';
+import paraDrillText from './paradrill.txt?raw';
 
 export const Lesson3 = {
   id: 3,
@@ -9,10 +9,11 @@ export const Lesson3 = {
   keys: 'R & U Keys',
   description: 'Reach upward with index fingers to develop spatial accuracy on the upper deck.',
   badge: 'Level 3',
-  keyDrill,
-  wordDrills,
-  sentenceDrills,
-  paragraphDrills,
+  keyDrill: keyDrillText,
+  wordDrills: [{ name: 'Word Drill 1', text: wordDrillText }],
+  sentenceDrills: [{ name: 'Sentence Drill 1', text: sentenceDrillText }],
+  paragraphDrills: [{ name: 'Paragraph Drill 1', text: paraDrillText }],
+  paragraphDrill: [{ name: 'Paragraph Drill 1', text: paraDrillText }],
 };
 
 export default Lesson3;
